@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Higher Education Dashboard</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+
+<div class="container-fluid mt-2">
+
+    <h5 class="text-center mb-2">Higher Education Institutions Dashboard</h5>
+
+    <div class="row mb-2">
+
+        <div class="col-9"></div>
+
+        <div class="col-12">
+            <button onclick="LoadData()" class="btn btn-primary btn-sm w-100">Load Data</button>
+        </div>
+
+    </div>
+
+    <div id="error" class="alert alert-danger text-center d-none p-1"></div>
+
+    <div style="height:500px; overflow-y:auto; border:1px solid #ccc;">
+
+        <table class="table table-bordered table-sm text-center mb-0">
+
+            <thead class="table-dark">
+                <tr>
+                    <th>Institution</th>
+                    <th>Cycle</th>
+                    <th>Publication Date</th>
+                    <th>Review Type</th>
+                    <th>Overall Judgment</th>
+                </tr>
+            </thead>
+
+            <tbody id="tableBody"></tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<script>
+
+var tableBody = document.getElementById("tableBody");
+var errorBox = document.getElementById("error");
+
+async function LoadData() {
+
+    errorBox.classList.add("d-none");
+
+    tableBody.innerHTML = "<tr><td colspan='5'>Loading...</td></tr>";
+
+    try {
+
+        var response = await fetch("https://www.data.gov.bh/api/explore/v2.1/catalog/datasets/results-of-higher-education-inst/records?limit=100");
+        var result = await response.json();
+        var data = result.results;
+
+        var table_data = "";
+
+        for (var index = 0; index < data.length; index++) {
+
+            var institution_name_e = data[index].institution_name_e;
+            var cycle = data[index].cycle;
+            var publication_date = data[index].publication_date;
+            var review_type = data[index].review_type_e;
+            var overall = data[index].overall_judgment;
+
+            if (institution_name_e == null) { institution_name_e = "Not Available"; }
+            if (cycle == null) { cycle = "Not Available"; }
+            if (publication_date == null) { publication_date = "Not Available"; }
+            if (review_type == null) { review_type = "Not Available"; }
+            if (overall == null) { overall = "Not Available"; }
+
+            table_data += "<tr>";
+            table_data += "<td>" + institution_name_e + "</td>";
+            table_data += "<td>" + cycle + "</td>";
+            table_data += "<td>" + publication_date + "</td>";
+            table_data += "<td>" + review_type + "</td>";
+            table_data += "<td>" + overall + "</td>";
+            table_data += "</tr>";
+
+        }
+
+        document.getElementById("tableBody").innerHTML = table_data;
+
+    } catch (e) {
+
+        errorBox.innerText = "Error loading data";
+        errorBox.classList.remove("d-none");
+
+        tableBody.innerHTML = "<tr><td colspan='5'>Error</td></tr>";
+    }
+}
+
+</script>
+
+</body>
+
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <title>Airport Departure Flights (Live Tracking)</title>
+</head>
+
+<body class="bg-light text-center">
+    <div class="container mt-3 mb-3 p-3 bg-white border bordered">
+
+        <h1 class="mt-3">Airport Departure Flights (Live Tracking)</h1>
+
+        <div class="row mt-3 mb-3">
+            <div class="col">
+                <select class="form-select" id="airport_code">
+                    <option disabled selected value="">Select Airport</option>
+                    <option value="BAH">Bahrain International Airport (BAH)</option>
+                    <option value="DMM">King Fahad Dammam Airport (DMM)</option>
+                    <option value="IST">Istanbul Airport (IST)</option>
+                    <option value="LHR">London Heathrow Airport (LHR)</option>
+                    <option value="CAI">Cairo Airport (CAI)</option>
+                </select>
+            </div>
+            <div class="col">
+                <button class="btn btn-primary w-100" onclick="LoadFlights();">Load Flights</button>
+            </div>
+            <div class="col">
+                <button class="btn btn-success w-100" onclick="LoadActiveFlights();">Load Active Flights</button>
+            </div>
+        </div>
+
+        <label class="fw-bold">Current Date/Time:</label>
+        <label id="current_date_time">10:20PM</label>
+
+        <table class="table table-bordered mt-3 table-responsive">
+            <thead class="table-dark">
+                <tr>
+                    <td>Flight Date</td>
+                    <td>Flight Status</td>
+                    <td>Flight (IATA)</td>
+                    <td>Airline</td>
+                    <td>Departure Airport</td>
+                    <td>Arrival Airport</td>
+                    <td>Terminal</td>
+                    <td>Scheduled Date & Time</td>
+                    <td>Actual Date & Time</td>
+                    <td>Live Tracking Link</td>
+                </tr>
+            </thead>
+            <tbody id="flights_body" class="table-light text-center">
+                <tr>
+                    <td colspan="10">No data yet</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+
+        var apikey = "6ba8562df369e59d289d0dda5f66987c";
+
+        var tableBody = document.getElementById("flights_body");
+        var airportSelect = document.getElementById("airport_code");
+
+        setInterval(Update_Time, 1000);
+        Update_Time();
+
+        function Update_Time() {
+            document.getElementById("current_date_time").innerHTML = new Date();
+        }
+
+        function safe(value) {
+            if (value) {
+                return value;
+            }
+            return "N/A";
+        }
+
+        async function LoadFlights() {
+
+            var airport_iata_code = airportSelect.value;
+
+            if (!airport_iata_code) {
+                alert("Please select an airport");
+                return;
+            }
+
+            tableBody.innerHTML = "<tr><td colspan='10'>Loading...</td></tr>";
+
+            try {
+
+                var response = await fetch("https://api.aviationstack.com/v1/flights?access_key=" + apikey + "&dep_iata=" + airport_iata_code);
+                var result = await response.json();
+
+                if (!result || result.error) {
+                    throw new Error();
+                }
+
+                var data = result.data;
+
+                var flights_data = "";
+
+                if (!data || data.length === 0) {
+                    flights_data = "<tr><td colspan='10'>No data</td></tr>";
+                } else {
+
+                    for (var i = 0; i < data.length; i++) {
+
+                        var f = data[i];
+
+                        var flightCode = safe(f.flight && f.flight.iata);
+
+                        var live = "N/A";
+
+                        if (f.live && f.live.is_ground === false) {
+                            live = "<a href='https://www.flightradar24.com/" + flightCode + "' target='_blank'>View</a>";
+                        }
+
+                        flights_data += "<tr>";
+                        flights_data += "<td>" + safe(f.flight_date) + "</td>";
+                        flights_data += "<td>" + safe(f.flight_status) + "</td>";
+                        flights_data += "<td>" + flightCode + "</td>";
+                        flights_data += "<td>" + safe(f.airline && f.airline.name) + "</td>";
+                        flights_data += "<td>" + safe(f.departure && f.departure.airport) + "</td>";
+                        flights_data += "<td>" + safe(f.arrival && f.arrival.airport) + "</td>";
+                        flights_data += "<td>" + safe(f.arrival && f.arrival.terminal) + "</td>";
+                        flights_data += "<td>" + safe(f.departure && f.departure.scheduled) + "</td>";
+                        flights_data += "<td>" + safe(f.departure && f.departure.actual) + "</td>";
+                        flights_data += "<td>" + live + "</td>";
+                        flights_data += "</tr>";
+                    }
+                }
+
+                tableBody.innerHTML = flights_data;
+
+            } catch (e) {
+                tableBody.innerHTML = "<tr><td colspan='10'>Error</td></tr>";
+            }
+        }
+
+        async function LoadActiveFlights() {
+
+            var airport_iata_code = airportSelect.value;
+
+            if (!airport_iata_code) {
+                alert("Please select an airport");
+                return;
+            }
+
+            tableBody.innerHTML = "<tr><td colspan='10'>Loading...</td></tr>";
+
+            try {
+
+                var response = await fetch("https://api.aviationstack.com/v1/flights?access_key=" + apikey + "&dep_iata=" + airport_iata_code + "&flight_status=active");
+                var result = await response.json();
+
+                if (!result || result.error) {
+                    throw new Error();
+                }
+
+                var data = result.data;
+
+                var flights_data = "";
+
+                if (!data || data.length === 0) {
+                    flights_data = "<tr><td colspan='10'>No data</td></tr>";
+                } else {
+
+                    for (var i = 0; i < data.length; i++) {
+
+                        var f = data[i];
+
+                        var flightCode = safe(f.flight && f.flight.iata);
+
+                        var live = f.live;
+
+                        var plane_on_ground = true;
+
+                        if (live != null) {
+                            if (live.is_ground === false) {
+                                plane_on_ground = false;
+                            } else {
+                                plane_on_ground = true;
+                            }
+                        } else {
+                            plane_on_ground = true;
+                        }
+
+                        flights_data += "<tr>";
+                        flights_data += "<td>" + safe(f.flight_date) + "</td>";
+                        flights_data += "<td>" + safe(f.flight_status) + "</td>";
+                        flights_data += "<td>" + flightCode + "</td>";
+                        flights_data += "<td>" + safe(f.airline && f.airline.name) + "</td>";
+                        flights_data += "<td>" + safe(f.departure && f.departure.airport) + "</td>";
+                        flights_data += "<td>" + safe(f.arrival && f.arrival.airport) + "</td>";
+                        flights_data += "<td>" + safe(f.arrival && f.arrival.terminal) + "</td>";
+                        flights_data += "<td>" + safe(f.departure && f.departure.scheduled) + "</td>";
+                        flights_data += "<td>" + safe(f.departure && f.departure.actual) + "</td>";
+
+                        if (plane_on_ground === false) {
+                            flights_data += "<td><a href='https://www.flightradar24.com/" + flightCode + "' target='_blank'>View</a></td>";
+                        } else {
+                            flights_data += "<td>N/A</td>";
+                        }
+
+                        flights_data += "</tr>";
+                    }
+                }
+
+                tableBody.innerHTML = flights_data;
+
+            } catch (e) {
+                tableBody.innerHTML = "<tr><td colspan='10'>Error</td></tr>";
+            }
+        }
+
+    </script>
+
+</body>
+
+</html>
